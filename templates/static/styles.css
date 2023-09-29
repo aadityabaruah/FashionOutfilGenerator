@@ -1,0 +1,44 @@
+body, html {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+#chat-box {
+    width: 100%;
+    max-height: 90%; /* Adjust as needed */
+    overflow-y: auto;
+    overflow-wrap: break-word; /* Ensure text wraps and doesn't overflow */
+    padding: 5px 20px; /* Padding for better appearance */
+}
+
+#user-input {
+    position: fixed; /* Makes the input stick to the bottom */
+    bottom: 0;
+    width: 100%;
+    background-color: white; /* Ensure it has a solid background so the chat doesn't show through */
+    border-top: 1px solid #ccc; /* Optional: adds a separation line */
+    padding: 10px; /* Space out the input and button */
+}
+
+#user-input input[type="text"] {
+    width: 85%; /* Give space for the button */
+    padding: 5px; /* Some internal spacing for the input */
+}
+
+#user-input button {
+    width: 10%; /* Adjust as needed based on your graphic or text */
+    padding: 5px;
+    background-color: #007BFF;
+    border: none;
+    border-radius: 4px;
+    color: white;
+}
+
+#image-container {
+    width: 100%;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Responsive grid for images */
+    gap: 10px;
+}

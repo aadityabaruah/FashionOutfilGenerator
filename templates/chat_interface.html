@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Interface</title>
+    {% load static %}
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <img id="logo" src="{% static 'Sydney.png' %}" alt="Sydney Conversational ImageGenAi">
+
+
+
+        <div id="chat-box">
+            <!-- Chat messages will be displayed here -->
+        </div>
+
+        <div id="user-input">
+            <textarea id="message" placeholder="Enter your message..." rows="3"></textarea>
+            <button onclick="sendMessage()">🚀</button>
+        </div>
+    </div>
+
+
+
+    <script>
+        let concatenatedMessage = "";
+        let previousMessage = "";
+
+        async function sendMessage() {
+            const message = document.getElementById('message').value;
+            document.getElementById('message').value = '';
+
+            const chatBox = document.getElementById('chat-box');
+            chatBox.innerHTML += `<div class="message user-message">${message}</div>`; // Display only the current message
+
+
+            // Add the loading dots where the bot's response will appear
+            const loadingDotsDiv = document.createElement('div');
+            loadingDotsDiv.className = "message bot-message";
+            loadingDotsDiv.innerHTML = `
+                <div id="loading-dots">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>`;
+            chatBox.appendChild(loadingDotsDiv);
+
+            const postData = new URLSearchParams();
+            postData.append('message', concatenatedMessage + " " + message);
+            postData.append('previous_message', previousMessage);
+
+
+            const response = await fetch('/send_message/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: postData.toString(),
+            });
+
+            // Remove the loading dots
+            loadingDotsDiv.remove();
+
+            const data = await response.json();
+            chatBox.innerHTML += `<div class="message bot-message">${data.response}</div>`;
+
+            for (let idea of data.ideas) {
+                const ideaDiv = document.createElement('div');
+                ideaDiv.className = "idea-option";
+                ideaDiv.innerHTML = idea;
+                ideaDiv.onclick = async function () {
+                    // Check if the ideaDiv has been clicked before
+                    if (this.getAttribute('data-clicked')) {
+                        return; // Do nothing if it has been clicked
+                    }
+
+                    this.setAttribute('data-clicked', 'true'); // Mark it as clicked
+                    this.style.backgroundColor = "#d3d3d3";
+
+                    const ideaOptions = document.querySelectorAll('.idea-option');
+                    ideaOptions.forEach(ideaOption => {
+                        if (ideaOption !== this) {
+                            ideaOption.remove();
+                        }
+                    });
+                    await generateImagesForIdea(idea);
+                };
+                chatBox.appendChild(ideaDiv);
+            }
+
+            previousMessage = message;
+        }
+        function openStreamlitSearch(imageUrl) {
+    // Extract the image name from the URL (e.g., "0.jpeg")
+            const imageName = imageUrl.split('/').pop();
+    // Define the Streamlit app URL on localhost and append the image name as a parameter
+            const streamlitUrl = `http://localhost:8501?image=${imageName}`;
+    // Open the Streamlit app in a new window/tab
+            window.open(streamlitUrl, '_blank');
+        }
+
+
+        async function generateImagesForIdea(idea) {
+            // Create a new div to display "Generating Image..." with spinner
+            const generatingDiv = document.createElement('div');
+            generatingDiv.className = "message bot-message";
+            generatingDiv.innerHTML = '<span class="spinner"></span>Generating Image...';
+            chatBox.appendChild(generatingDiv);
+
+            // Scroll the chatbox to the bottom to show the "Generating Image..." message
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const response = await fetch('/generate_images_for_idea/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: `idea=${idea}`,
+            });
+
+            // Remove the "Generating Image..." message
+            generatingDiv.remove();
+
+            const data = await response.json();
+
+            // Create the images grid
+            const imagesContainer = document.createElement('div');
+            imagesContainer.className = "message bot-message";
+
+            // Create the images grid
+            const imagesGrid = document.createElement('div');
+            imagesGrid.style.display = "grid";
+            imagesGrid.style.gridTemplateColumns = "1fr 1fr"; // Two columns
+            imagesGrid.style.gap = "10px"; // Spacing between images
+
+            for (let i = 0; i < Math.min(4, data.image_urls.length); i++) {
+                const imgUrl = data.image_urls[i];
+                const imgDiv = document.createElement('div');
+                const img = document.createElement('img');
+                img.src = imgUrl;
+                img.width = 200;
+                imgDiv.appendChild(img);
+
+                // Add "Search Similar" button
+                const searchButton = document.createElement('button');
+                searchButton.innerHTML = "Search Similar";
+                searchButton.onclick = function () {
+                    openStreamlitSearch(imgUrl);
+                };
+                imgDiv.appendChild(searchButton);
+
+                imagesGrid.appendChild(imgDiv);
+            }
+
+            imagesContainer.appendChild(imagesGrid);
+            chatBox.appendChild(imagesContainer);
+
+            // Scroll the chatbox to the bottom to show the generated images
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function openStreamlitSearch(imageUrl) {
+            // Extract the image name from the URL (e.g., "0.jpeg")
+            const imageName = imageUrl.split('/').pop();
+            // Define the Streamlit app URL on localhost and append the image name as a parameter
+            const streamlitUrl = `http://localhost:8501?image=${imageName}`;
+            // Open the Streamlit app in a new window/tab
+            window.open(streamlitUrl, '_blank');
+        }
+
+
+        document.getElementById('message').addEventListener('keydown', function (event) {
+            if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                concatenatedMessage += document.getElementById('message').value + " "; // Add a space for separation
+                sendMessage();
+            } else if (event.key === "Enter" && event.shiftKey) {
+                event.preventDefault();
+                concatenatedMessage = document.getElementById('message').value; // Reset concatenatedMessage to the current message only
+                sendMessage();
+            }
+        });
+
+        const chatBox = document.getElementById('chat-box');
+        chatBox.scrollTop = chatBox.scrollHeight;
+    </script>
+
+
+</body>
+</html>
